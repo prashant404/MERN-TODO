@@ -1,73 +1,102 @@
-import React from "react";
-import Tasks from "./Tasks";
-import { Paper, TextField } from "@material-ui/core";
-import { Checkbox, Button } from "@material-ui/core";
-import "./App.css";
+import { useEffect, useState } from 'react';
+import animation from './notebook.gif';
+const api_base = 'http://localhost:3001';
 
-class App extends Tasks {
-    state = { tasks: [], currentTask: "" };
-    render() {
-        const { tasks } = this.state;
-        return (
-            <div className="App flex">
-                <Paper elevation={3} className="container">
-                    <div className="heading">TO-DO</div>
-                    <form
-                        onSubmit={this.handleSubmit}
-                        className="flex"
-                        style={{ margin: "15px 0" }}
-                    >
-                        <TextField
-                            variant="outlined"
-                            size="small"
-                            style={{ width: "80%" }}
-                            value={this.state.currentTask}
-                            required={true}
-                            onChange={this.handleChange}
-                            placeholder="Add New TO-DO"
-                        />
-                        <Button
-                            style={{ height: "40px" }}
-                            color="primary"
-                            variant="outlined"
-                            type="submit"
-                        >
-                            Add task
-                        </Button>
-                    </form>
-                    <div>
-                        {tasks.map((task) => (
-                            <Paper
-                                key={task._id}
-                                className="flex task_container"
-                            >
-                                <Checkbox
-                                    checked={task.completed}
-                                    onClick={() => this.handleUpdate(task._id)}
-                                    color="primary"
-                                />
-                                <div
-                                    className={
-                                        task.completed
-                                            ? "task line_through"
-                                            : "task"
-                                    }
-                                >
-                                    {task.task}
-                                </div>
-                                <Button
-                                    onClick={() => this.handleDelete(task._id)}
-                                    color="secondary"
-                                >
-                                    delete
-                                </Button>
-                            </Paper>
-                        ))}
-                    </div>
-                </Paper>
-            </div>
-        );
-    }
+let name = prompt("enter your name here");
+
+function App() {
+	const [todos, setTodos] = useState([]);
+	const [popupActive, setPopupActive] = useState(false);
+	const [newTodo, setNewTodo] = useState("");
+
+	useEffect(() => {
+		GetTodos();
+	}, []);
+
+	const GetTodos = () => {
+		fetch(api_base + '/todos')
+			.then(res => res.json())
+			.then(data => setTodos(data))
+			.catch((err) => console.error("Error: ", err));
+	}
+
+	const completeTodo = async id => {
+		const data = await fetch(api_base + '/todo/complete/' + id).then(res => res.json());
+
+		setTodos(todos => todos.map(todo => {
+			if (todo._id === data._id) {
+				todo.complete = data.complete;
+			}
+
+			return todo;
+		}));
+		
+	}
+
+	const addTodo = async () => {
+		const data = await fetch(api_base + "/todo/new", {
+			method: "POST",
+			headers: {
+				"Content-Type": "application/json" 
+			},
+			body: JSON.stringify({
+				text: newTodo
+			})
+		}).then(res => res.json());
+
+		setTodos([...todos, data]);
+
+		setPopupActive(false);
+		setNewTodo("");
+	}
+
+	const deleteTodo = async id => {
+		const data = await fetch(api_base + '/todo/delete/' + id, { method: "DELETE" }).then(res => res.json());
+
+		setTodos(todos => todos.filter(todo => todo._id !== data.result._id));
+	}
+
+	return (
+		<div className="App">
+            <h3>TODOSY (TODO-App)</h3>
+			<h3>Welcome {name} 😀</h3>
+		
+            
+			<h4>Your tasks ↓</h4>
+
+			<div className="todos">
+				{todos.length > 0 ? todos.map(todo => (
+					<div className={
+						"todo" + (todo.complete ? " is-complete" : "")
+					} key={todo._id} onClick={() => completeTodo(todo._id)}>
+						<div className="checkbox"></div>
+
+						<div className="text">{todo.text}</div>
+
+						<div className="delete-todo" onClick={() => deleteTodo(todo._id)}>x</div>
+					</div>
+				)) : (
+					<p>You currently have no tasks</p>
+				)}
+			</div>
+
+			<div className="addPopup" onClick={() => setPopupActive(true)}>+</div>
+
+			{popupActive ? (
+				<div className="popup">
+					<div className="closePopup" onClick={() => setPopupActive(false)}>X</div>
+					<div className="content">
+						<h3>Add Task</h3>
+						<input type="text" className="add-todo-input" onChange={e => setNewTodo(e.target.value)} value={newTodo} />
+						<div className="button" onClick={addTodo}>Create Task</div>
+					</div>
+				</div>
+			) : ''}
+			<div className='container'>
+			<img src={animation} alt="wait until the page loads" />
+			</div>
+		</div>
+	);
 }
 
 export default App;
